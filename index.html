@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="給料メーター — 今月あといくら使えるかがわかる給与・家計アプリ。シフトカレンダーと節約診断つき。" />
+  <title>給料メーター | 給与と家計を見える化するアプリ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf8',
+              100: '#d1faf0',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+            },
+          },
+          fontFamily: {
+            sans: ['"Noto Sans JP"', 'Hiragino Kaku Gothic ProN', 'Meiryo', 'sans-serif'],
+          },
+          boxShadow: {
+            phone: '0 32px 64px -16px rgba(15, 118, 110, 0.35), 0 12px 24px -8px rgba(0,0,0,0.12)',
+            glow: '0 0 0 1px rgba(20,184,166,0.15), 0 20px 40px -12px rgba(13,148,136,0.25)',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+    body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+    main, section, article, figure {
+      max-width: 100%;
+      min-width: 0;
+    }
+    figure { overflow: hidden; }
+    figure img { width: 100%; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .float-slow { animation: float 5s ease-in-out infinite; }
+    .float-delay { animation: float 5s ease-in-out 1.2s infinite; }
+    @media (max-width: 639px) {
+      .float-slow, .float-delay { animation: none; }
+    }
+    .hero-gradient {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(20,184,166,0.18), transparent),
+        linear-gradient(180deg, #f8fafc 0%, #ecfdf8 45%, #f8fafc 100%);
+    }
+    .diff-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(236,253,248,0.9) 100%);
+    }
+    .hero-catch {
+      word-break: keep-all;
+      overflow-wrap: normal;
+    }
+    .shift-legend {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem 0.75rem;
+      max-width: 100%;
+    }
+    .shift-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #475569;
+    }
+    .jp-text {
+      word-break: keep-all;
+      overflow-wrap: normal;
+      line-break: strict;
+    }
+    .jp-inline {
+      display: inline-block;
+    }
+    .safe-card {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .list-check li {
+      align-items: flex-start;
+    }
+    .list-check .list-text {
+      flex: 1;
+      min-width: 0;
+      line-height: 1.6;
+    }
+    @media (max-width: 767px) {
+      .jp-text {
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
+      .jp-body-sm {
+        font-size: 0.75rem;
+        line-height: 1.7;
+        letter-spacing: 0.01em;
+      }
+      .jp-h3-sm {
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        letter-spacing: -0.02em;
+      }
+      .jp-h2-sm {
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+      }
+      .shadow-glow {
+        box-shadow: 0 0 0 1px rgba(20,184,166,0.12), 0 4px 12px -4px rgba(13,148,136,0.18);
+      }
+      .diff-card {
+        overflow: visible;
+      }
+    }
+    @media (min-width: 640px) {
+      br.jp-mb-only { display: none; }
+      br.hero-mb-only { display: none; }
+    }
+  </style>
+</head>
+<body class="font-sans antialiased text-slate-800 bg-slate-50 overflow-x-hidden">
+
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 min-w-0">
+      <a href="#" class="flex items-center gap-2 min-w-0 shrink">
+        <span class="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 text-white shadow-sm">
+          <i class="fa-solid fa-yen-sign text-sm"></i>
+        </span>
+        <span class="font-bold text-base sm:text-lg text-slate-900 truncate">給料メーター</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-600">
+        <a href="#differentiators" class="hover:text-brand-600 transition-colors">独自機能</a>
+        <a href="#screens" class="hover:text-brand-600 transition-colors">画面一覧</a>
+        <a href="#features" class="hover:text-brand-600 transition-colors">機能</a>
+        <a href="#pricing" class="hover:text-brand-600 transition-colors">料金</a>
+      </nav>
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSe0JpXU6Bx4vM1PR9QvfaJl0e7D3w3qNkXBL3C6alTulZdRuA/viewform?usp=header" target="_blank" rel="noopener noreferrer" class="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 px-3 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-brand-700 transition-colors">
+        事前登録
+        <i class="fa-solid fa-arrow-right text-[10px] sm:text-xs"></i>
+      </a>
+    </div>
+  </header>
+
+  <main class="overflow-x-hidden max-w-full min-w-0">
+    <!-- Hero -->
+    <section class="hero-gradient relative overflow-hidden pt-8 pb-4 sm:pt-14 sm:pb-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div class="text-center max-w-4xl mx-auto min-w-0">
+          <p class="inline-flex items-center gap-2 rounded-full bg-white text-brand-700 px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold mb-4 sm:mb-6 border border-brand-200 shadow-sm max-w-full">
+            <i class="fa-solid fa-bell text-brand-500 shrink-0"></i>
+            先行リリース受付中
+          </p>
+          <h1 class="hero-catch text-[1.05rem] sm:text-2xl lg:text-[1.75rem] xl:text-3xl font-black text-slate-900 leading-relaxed sm:leading-snug tracking-tight px-1">
+            給料の見える化に、<br class="hero-mb-only" />
+            <span class="text-brand-600">シフト管理</span>と<span class="text-brand-600">節約診断</span>を。
+          </h1>
+          <p class="jp-text jp-body-sm mt-4 sm:mt-5 text-slate-600 sm:text-lg leading-relaxed max-w-2xl mx-auto">
+            <span class="sm:hidden">
+              今月あといくら使えるかが、<br />
+              ホーム画面でひと目でわかる。<br />
+              夜勤・残業の見込みも、サブスクの見直しも、<br />
+              <span class="jp-inline">このアプリひとつで。</span>
+            </span>
+            <span class="hidden sm:block">
+              今月あといくら使えるかが、ホーム画面でひと目でわかる。<br />
+              <span class="sm:whitespace-nowrap">夜勤・残業の見込みも、サブスクの見直しも、このアプリひとつで。</span>
+            </span>
+          </p>
+          <div class="mt-5 sm:mt-8 flex flex-wrap justify-center gap-2.5 sm:gap-3 px-1">
+            <a href="#screens" class="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-600/30 hover:bg-brand-700 transition-all">
+              <i class="fa-solid fa-mobile-screen"></i>
+              画面を見る
+            </a>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSe0JpXU6Bx4vM1PR9QvfaJl0e7D3w3qNkXBL3C6alTulZdRuA/viewform?usp=header" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 rounded-full bg-white border-2 border-slate-200 px-5 sm:px-7 py-2.5 sm:py-3.5 text-sm font-bold text-slate-700 hover:border-brand-400 transition-colors">
+              先行登録
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- アプリ画面一覧（ファーストビュー直下） -->
+    <section id="screens" class="py-6 sm:py-16 lg:py-20 bg-slate-50 border-b border-slate-100 overflow-x-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div class="text-center mb-4 sm:mb-10">
+          <h2 class="text-lg sm:text-2xl lg:text-3xl font-black text-slate-900">アプリ画面（全5画面）</h2>
+          <p class="jp-text mt-1.5 sm:mt-3 text-sm sm:text-base text-slate-600">ホーム、シフト、収入分析、節約診断、今月の実績</p>
+        </div>
+
+        <!-- スマホ：縦1カラム -->
+        <div class="flex flex-col gap-4 md:hidden min-w-0">
+          <article class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm w-full min-w-0">
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-1.png" alt="ホーム — 6月の状況" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-3 font-bold text-slate-900 text-center text-base">ホーム</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">今月使えるお金がひと目でわかる</p>
+          </article>
+          <article class="bg-white rounded-2xl p-4 border-2 border-violet-200 shadow-sm w-full min-w-0">
+            <span class="block text-center text-[10px] font-bold text-violet-600 mb-2">独自機能</span>
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-2.png" alt="シフト — カレンダーと集計" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-3 font-bold text-violet-900 text-center text-base">シフト</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed"><i class="fa-solid fa-sun text-orange-500 text-[10px]" aria-hidden="true"></i> 日勤 <i class="fa-solid fa-moon text-violet-600 text-[10px]" aria-hidden="true"></i> 夜勤 <i class="fa-solid fa-clock text-amber-600 text-[10px]" aria-hidden="true"></i> 残業</p>
+          </article>
+          <article class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm w-full min-w-0">
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-3.png" alt="収入分析" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-3 font-bold text-slate-900 text-center text-base">収入分析</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">月別の推移と内訳を確認</p>
+          </article>
+          <article class="bg-white rounded-2xl p-4 border-2 border-rose-200 shadow-sm w-full min-w-0">
+            <span class="block text-center text-[10px] font-bold text-rose-600 mb-2">独自機能</span>
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-4.png" alt="節約診断" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-3 font-bold text-rose-900 text-center text-base">節約診断</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">サブスクの見直し候補をチェック</p>
+          </article>
+          <article class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm w-full min-w-0">
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-5.png" alt="今月の実績" width="471" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-3 font-bold text-slate-900 text-center text-base">今月の実績</h3>
+            <p class="jp-text mt-2 text-slate-600 text-sm leading-relaxed text-center">
+              達成率と日別のペースをリアルタイム表示。実績と予測を並べて、月末までの見通しを確認できます。
+            </p>
+            <ul class="mt-3 space-y-2 text-sm text-slate-700">
+              <li class="flex items-start gap-2">
+                <span class="h-5 w-5 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">✓</span>
+                <span class="jp-text min-w-0">今月の達成率を％でひと目で確認</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="h-5 w-5 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">✓</span>
+                <span class="jp-text min-w-0">1日あたりの稼ぎペースを自動計算</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="h-5 w-5 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">✓</span>
+                <span class="jp-text min-w-0">月末の予測収入をグラフで可視化</span>
+              </li>
+            </ul>
+          </article>
+        </div>
+
+        <!-- タブレット以上：グリッド -->
+        <div class="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 min-w-0">
+          <article class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm min-w-0">
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[220px] mx-auto">
+              <img src="assets/screenshots/screen-1.png" alt="ホーム — 6月の状況" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-4 font-bold text-slate-900 text-center text-base">ホーム</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">今月使えるお金がひと目でわかる</p>
+          </article>
+          <article class="bg-white rounded-2xl p-5 border-2 border-violet-200 shadow-sm min-w-0">
+            <span class="block text-center text-[10px] font-bold text-violet-600 mb-2">独自機能</span>
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[220px] mx-auto">
+              <img src="assets/screenshots/screen-2.png" alt="シフト — カレンダーと集計" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-4 font-bold text-violet-900 text-center text-base">シフト</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed"><i class="fa-solid fa-sun text-orange-500 text-[10px]" aria-hidden="true"></i> 日勤 <i class="fa-solid fa-moon text-violet-600 text-[10px]" aria-hidden="true"></i> 夜勤 <i class="fa-solid fa-clock text-amber-600 text-[10px]" aria-hidden="true"></i> 残業</p>
+          </article>
+          <article class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm min-w-0">
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[220px] mx-auto">
+              <img src="assets/screenshots/screen-3.png" alt="収入分析" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-4 font-bold text-slate-900 text-center text-base">収入分析</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">月別の推移と内訳を確認</p>
+          </article>
+          <article class="bg-white rounded-2xl p-5 border-2 border-rose-200 shadow-sm min-w-0">
+            <span class="block text-center text-[10px] font-bold text-rose-600 mb-2">独自機能</span>
+            <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] mx-auto">
+              <img src="assets/screenshots/screen-4.png" alt="節約診断" width="473" height="1024" loading="lazy" />
+            </figure>
+            <h3 class="mt-4 font-bold text-rose-900 text-center text-base">節約診断</h3>
+            <p class="jp-text mt-1 text-sm text-slate-500 text-center leading-relaxed">サブスクの見直し候補をチェック</p>
+          </article>
+          <article class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm md:col-span-2 lg:col-span-2 min-w-0">
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+              <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[180px] shrink-0">
+                <img src="assets/screenshots/screen-5.png" alt="今月の実績" width="471" height="1024" loading="lazy" />
+              </figure>
+              <div class="text-center sm:text-left min-w-0 flex-1">
+                <h3 class="text-xl font-bold text-slate-900">今月の実績</h3>
+                <p class="jp-text mt-2 text-slate-600 text-sm leading-relaxed">
+                  達成率と日別のペースをリアルタイム表示。実績と予測を並べて、月末までの見通しを確認できます。
+                </p>
+                <ul class="mt-4 space-y-2 text-sm text-slate-700">
+                  <li class="flex items-center gap-2"><span class="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold shrink-0">✓</span>今月の達成率を％でひと目で確認</li>
+                  <li class="flex items-center gap-2"><span class="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold shrink-0">✓</span>1日あたりの稼ぎペースを自動計算</li>
+                  <li class="flex items-center gap-2"><span class="h-6 w-6 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold shrink-0">✓</span>月末の予測収入をグラフで可視化</li>
+                </ul>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 競合との差別化 -->
+    <section id="differentiators" class="py-6 sm:py-16 lg:py-24 bg-white border-y border-slate-100 overflow-x-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div class="text-center max-w-3xl mx-auto mb-5 sm:mb-12 min-w-0">
+          <span class="text-xs sm:text-sm font-bold text-brand-600">給料メーターの特徴</span>
+          <h2 class="jp-text jp-h2-sm mt-1.5 sm:mt-3 text-base sm:text-2xl lg:text-3xl font-black text-slate-900 leading-relaxed sm:leading-snug">
+            家計簿は支出、勤怠は打刻——<br />
+            <span class="text-brand-600 sm:whitespace-nowrap">シフトで給与と家計をつなぐ</span>
+          </h2>
+          <ul class="list-check sm:hidden mt-3 text-left max-w-[17.5rem] mx-auto space-y-2.5 jp-body-sm text-slate-600">
+            <li class="flex gap-2.5">
+              <i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px]" aria-hidden="true"></i>
+              <span class="jp-text list-text">家計アプリはサブスク登録まで。</span>
+            </li>
+            <li class="flex gap-2.5">
+              <i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px]" aria-hidden="true"></i>
+              <span class="jp-text list-text">勤怠アプリは打刻まで。</span>
+            </li>
+            <li class="flex gap-2.5">
+              <i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px]" aria-hidden="true"></i>
+              <span class="jp-text list-text">給料メーターはシフトから自動計算。</span>
+            </li>
+            <li class="flex gap-2.5">
+              <i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px]" aria-hidden="true"></i>
+              <span class="jp-text list-text">節約診断で年間節約額を表示。</span>
+            </li>
+          </ul>
+          <p class="jp-text jp-body-sm hidden sm:block mt-2 sm:mt-4 sm:text-base text-slate-600 leading-relaxed">
+            家計アプリはサブスクの登録まで、勤怠アプリは打刻まで。<br />
+            給料メーターはシフトをカレンダーに登録して手当と連動。<br />
+            節約診断では利用頻度を答えるだけで見直し候補と年間の節約額を表示します。
+          </p>
+        </div>
+
+        <!-- 比較表（スマホ：カード / PC：テーブル） -->
+        <div class="md:hidden space-y-2.5 mb-5 min-w-0 w-full">
+          <article class="safe-card rounded-2xl border border-slate-100 bg-white shadow-sm min-w-0">
+            <p class="jp-text px-3 py-2.5 text-xs font-semibold text-slate-800 bg-slate-50 border-b border-slate-100 leading-snug">今月「使えるお金」の表示</p>
+            <div class="grid grid-cols-3 divide-x divide-slate-100 text-center text-xs min-w-0">
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">家計簿</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">勤怠</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 bg-brand-50 min-w-0"><p class="text-[9px] font-bold text-brand-700 mb-1 leading-tight">給料メーター</p><p class="text-brand-700 font-bold"><i class="fa-solid fa-check"></i></p></div>
+            </div>
+          </article>
+          <article class="safe-card rounded-2xl border border-slate-100 bg-white shadow-sm min-w-0">
+            <p class="jp-text px-3 py-2.5 text-[11px] font-semibold text-slate-800 bg-slate-50 border-b border-slate-100 leading-snug">シフトカレンダー ×<br />夜勤手当の予想</p>
+            <div class="grid grid-cols-3 divide-x divide-slate-100 text-center text-xs min-w-0">
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">家計簿</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">勤怠</p><p class="text-amber-600 font-medium text-[10px] leading-tight">△ 打刻のみ</p></div>
+              <div class="px-1.5 py-2.5 bg-brand-50 min-w-0"><p class="text-[9px] font-bold text-brand-700 mb-1 leading-tight">給料メーター</p><p class="text-brand-700 font-bold"><i class="fa-solid fa-check"></i></p></div>
+            </div>
+          </article>
+          <article class="safe-card rounded-2xl border border-slate-100 bg-white shadow-sm min-w-0">
+            <p class="jp-text px-3 py-2.5 text-xs font-semibold text-slate-800 bg-slate-50 border-b border-slate-100 leading-snug">サブスク「本当に必要？」診断</p>
+            <div class="grid grid-cols-3 divide-x divide-slate-100 text-center text-xs min-w-0">
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">家計簿</p><p class="text-amber-600 font-medium text-[10px] leading-tight">△ 一覧のみ</p></div>
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">勤怠</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 bg-brand-50 min-w-0"><p class="text-[9px] font-bold text-brand-700 mb-1 leading-tight">給料メーター</p><p class="text-brand-700 font-bold"><i class="fa-solid fa-check"></i></p></div>
+            </div>
+          </article>
+          <article class="safe-card rounded-2xl border border-slate-100 bg-white shadow-sm min-w-0">
+            <p class="jp-text px-3 py-2.5 text-[11px] font-semibold text-slate-800 bg-slate-50 border-b border-slate-100 leading-snug"><span class="jp-inline">年間節約額の自動計算</span></p>
+            <div class="grid grid-cols-3 divide-x divide-slate-100 text-center text-xs min-w-0">
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">家計簿</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 min-w-0"><p class="text-[10px] text-slate-400 mb-1">勤怠</p><p class="text-slate-300"><i class="fa-solid fa-minus"></i></p></div>
+              <div class="px-1.5 py-2.5 bg-brand-50 min-w-0"><p class="text-[9px] font-bold text-brand-700 mb-1 leading-tight">給料メーター</p><p class="text-brand-700 font-bold"><i class="fa-solid fa-check"></i></p></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="hidden md:block mb-5 sm:mb-12 lg:mb-16">
+          <table class="w-full text-sm border-collapse rounded-2xl overflow-hidden shadow-sm">
+            <thead>
+              <tr class="bg-slate-900 text-white">
+                <th class="text-left p-4 font-semibold w-[28%]">できること</th>
+                <th class="p-4 font-semibold text-slate-400 w-[24%]">一般的な家計簿</th>
+                <th class="p-4 font-semibold text-slate-400 w-[24%]">勤怠・シフトアプリ</th>
+                <th class="p-4 font-bold text-brand-300 w-[24%] bg-brand-800">給料メーター</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              <tr class="bg-white">
+                <td class="p-4 font-medium text-slate-800">今月「使えるお金」の表示</td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center bg-brand-50 text-brand-700 font-bold"><i class="fa-solid fa-check"></i></td>
+              </tr>
+              <tr class="bg-slate-50/80">
+                <td class="p-4 font-medium text-slate-800">シフトカレンダー × 夜勤手当の予想</td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center text-amber-600 text-xs">△ 打刻のみ</td>
+                <td class="p-4 text-center bg-brand-50 text-brand-700 font-bold"><i class="fa-solid fa-check"></i></td>
+              </tr>
+              <tr class="bg-white">
+                <td class="p-4 font-medium text-slate-800">サブスク「本当に必要？」診断</td>
+                <td class="p-4 text-center text-amber-600 text-xs">△ 一覧のみ</td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center bg-brand-50 text-brand-700 font-bold"><i class="fa-solid fa-check"></i></td>
+              </tr>
+              <tr class="bg-slate-50/80">
+                <td class="p-4 font-medium text-slate-800">年間節約額の自動計算</td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-minus"></i></td>
+                <td class="p-4 text-center bg-brand-50 text-brand-700 font-bold"><i class="fa-solid fa-check"></i></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- シフトカレンダー — 大きなスクショ -->
+        <article class="diff-card safe-card rounded-3xl border border-brand-100 p-4 sm:p-10 lg:p-12 shadow-glow mb-5 sm:mb-10 lg:mb-14 min-w-0">
+          <div class="flex flex-col lg:grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-14 items-center min-w-0">
+            <div class="order-2 lg:order-1 w-full max-w-full min-w-0">
+              <span class="inline-flex items-center gap-2 rounded-full bg-violet-100 text-violet-800 px-3 py-1 text-xs font-bold mb-2 sm:mb-4">
+                <i class="fa-solid fa-calendar-days"></i>
+                独自機能 01
+              </span>
+              <h3 class="jp-text text-sm sm:text-xl font-black text-slate-900 leading-relaxed sm:leading-snug">
+                シフト登録で、夜勤手当と残業が給与に反映される
+              </h3>
+              <div class="mt-2 sm:mt-3 flex flex-wrap gap-1.5 sm:gap-2 text-xs text-slate-600" role="list" aria-label="シフトアイコンの凡例">
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-2.5 py-1 border border-orange-100" role="listitem">
+                  <i class="fa-solid fa-sun text-orange-500" aria-hidden="true"></i><span>日勤</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-2.5 py-1 border border-violet-100" role="listitem">
+                  <i class="fa-solid fa-moon text-violet-600" aria-hidden="true"></i><span>夜勤</span>
+                </span>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 border border-amber-100" role="listitem">
+                  <i class="fa-solid fa-clock text-amber-600" aria-hidden="true"></i><span>残業</span>
+                </span>
+              </div>
+              <p class="jp-text jp-body-sm mt-2 sm:mt-4 text-slate-600 sm:text-base leading-relaxed">
+                <span class="sm:hidden">
+                  日勤・夜勤・休みをカレンダーに登録するだけで、夜勤回数・手当・残業の見込みを自動集計。<br />
+                  <span class="jp-inline">収入分析やホーム画面に自動で反映されます。</span>
+                </span>
+                <span class="hidden sm:block">
+                  日勤・夜勤・休みをカレンダーに登録するだけで、今月の夜勤回数・夜勤手当（予想）・残業時間の見込みを自動集計。収入分析とホームの「使えるお金」に反映されます。
+                </span>
+              </p>
+              <ul class="mt-3 sm:mt-6 space-y-2 sm:space-y-3">
+                <li class="flex items-start gap-2 sm:gap-3 text-sm text-slate-700">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600"><i class="fa-solid fa-sun text-xs" aria-hidden="true"></i></span>
+                  <span class="jp-text text-xs sm:text-sm min-w-0 flex-1 leading-relaxed"><strong class="font-semibold">太陽マーク＝日勤</strong> — 通常勤務をカレンダーに登録</span>
+                </li>
+                <li class="flex items-start gap-2 sm:gap-3 text-sm text-slate-700">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-violet-600"><i class="fa-solid fa-moon text-xs" aria-hidden="true"></i></span>
+                  <span class="jp-text text-xs sm:text-sm min-w-0 flex-1 leading-relaxed"><strong class="font-semibold">月マーク＝夜勤</strong> — 夜勤手当の集計に反映</span>
+                </li>
+                <li class="flex items-start gap-2 sm:gap-3 text-sm text-slate-700">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600"><i class="fa-solid fa-clock text-xs" aria-hidden="true"></i></span>
+                  <span class="jp-text text-xs sm:text-sm min-w-0 flex-1 leading-relaxed"><strong class="font-semibold">時計マーク＝残業</strong> — 残業見込みをカレンダーと連動</span>
+                </li>
+              </ul>
+              <div class="mt-4 sm:mt-8 grid grid-cols-2 sm:flex sm:flex-wrap gap-2.5 sm:gap-4">
+                <div class="rounded-2xl bg-white px-3 sm:px-5 py-2.5 sm:py-4 border border-violet-100 shadow-sm min-w-0">
+                  <p class="jp-text text-[10px] sm:text-xs text-slate-500 leading-relaxed">今月の夜勤<span class="text-slate-400">（シフト画面の集計より）</span></p>
+                  <p class="text-lg sm:text-2xl font-black text-violet-700">7<span class="text-sm sm:text-base font-bold">回</span></p>
+                </div>
+                <div class="rounded-2xl bg-white px-3 sm:px-5 py-2.5 sm:py-4 border border-violet-100 shadow-sm min-w-0">
+                  <p class="jp-text text-[10px] sm:text-xs text-slate-500 leading-relaxed">夜勤手当（予想）<span class="text-slate-400">（シフト画面の集計より）</span></p>
+                  <p class="text-lg sm:text-2xl font-black text-violet-700">¥35,000</p>
+                </div>
+                <div class="rounded-2xl bg-white px-3 sm:px-5 py-2.5 sm:py-4 border border-amber-100 shadow-sm col-span-2 sm:col-span-1 min-w-0">
+                  <p class="jp-text text-[10px] sm:text-xs text-slate-500 leading-relaxed">
+                    <i class="fa-solid fa-clock text-amber-600 text-[10px]" aria-hidden="true"></i> 残業見込み<span class="text-slate-400">（シフト画面の集計より）</span>
+                  </p>
+                  <p class="text-lg sm:text-2xl font-black text-amber-700">12<span class="text-sm sm:text-base font-bold">時間</span></p>
+                </div>
+              </div>
+            </div>
+            <div class="order-1 lg:order-2 flex flex-col items-center gap-2 w-full min-w-0">
+              <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[200px] sm:max-w-[300px] mx-auto float-slow">
+                <img
+                  src="assets/screenshots/screen-2.png"
+                  alt="シフト画面 — 太陽＝日勤、月＝夜勤、時計＝残業のカレンダーと集計"
+                  width="473"
+                  height="1024"
+                  loading="lazy"
+                />
+              </figure>
+              <div class="shift-legend w-full max-w-[200px] sm:max-w-[300px] rounded-xl bg-white/90 border border-slate-100 px-3 py-2 shadow-sm" aria-label="カレンダーアイコンの凡例">
+                <span class="shift-legend-item"><i class="fa-solid fa-sun text-orange-500" aria-hidden="true"></i>日勤</span>
+                <span class="shift-legend-item"><i class="fa-solid fa-moon text-violet-600" aria-hidden="true"></i>夜勤</span>
+                <span class="shift-legend-item"><i class="fa-solid fa-clock text-amber-600" aria-hidden="true"></i>残業</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- 節約診断 — 大きなスクショ -->
+        <article class="diff-card safe-card rounded-3xl border border-rose-100 p-4 sm:p-10 lg:p-12 shadow-glow min-w-0">
+          <div class="flex flex-col lg:grid lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-14 items-center min-w-0 w-full">
+            <div class="flex justify-center w-full min-w-0 order-1 max-w-full">
+              <figure class="rounded-[1.75rem] shadow-phone w-full max-w-[200px] sm:max-w-[300px] mx-auto float-delay">
+                <img
+                  src="assets/screenshots/screen-4.png"
+                  alt="節約診断 — Netflixの利用頻度と年間節約額"
+                  width="473"
+                  height="1024"
+                  loading="lazy"
+                />
+              </figure>
+            </div>
+            <div class="w-full max-w-full min-w-0 order-2">
+              <span class="inline-flex items-center gap-2 rounded-full bg-rose-100 text-rose-800 px-3 py-1 text-xs font-bold mb-4">
+                <i class="fa-solid fa-piggy-bank"></i>
+                独自機能 02
+              </span>
+              <h3 class="jp-text text-base sm:text-2xl font-black text-slate-900 leading-snug sm:leading-snug">
+                利用頻度に答えるだけで、<span class="text-rose-600">見直し候補がわかる</span>
+              </h3>
+              <p class="jp-text jp-body-sm mt-4 sm:text-base text-slate-600 leading-relaxed w-full max-w-full">
+                <span class="sm:hidden">
+                  登録したサブスクを1つずつ確認。「週1回以上使いますか？」に答えるだけ。使っていないものは見直し候補として、年間節約額をその場で表示します。
+                </span>
+                <span class="hidden sm:block">
+                  登録したサブスクを1つずつ確認。「週1回以上使いますか？」に、よく使う・たまに・使っていないで答えるだけ。使っていないものは見直し候補として、年間の節約額をその場で表示します。
+                </span>
+              </p>
+              <div class="mt-6 rounded-2xl bg-rose-50 border border-rose-200 p-3.5 sm:p-5 w-full max-w-full min-w-0">
+                <p class="jp-text text-sm text-rose-800 font-medium">例：Netflix ¥1,590/月 × 使っていない</p>
+                <p class="jp-text mt-2 text-base sm:text-lg font-bold text-rose-700">
+                  見直し候補 — 年間 <span class="text-xl sm:text-3xl font-black">¥19,080</span> 節約の見込み
+                </p>
+              </div>
+              <ul class="mt-6 space-y-3">
+                <li class="flex items-start gap-3 text-sm text-slate-700">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-700"><i class="fa-solid fa-face-frown text-xs"></i></span>
+                  <span class="jp-text min-w-0 flex-1 leading-relaxed">登録だけでなく、実際の利用頻度まで確認できる</span>
+                </li>
+                <li class="flex items-start gap-3 text-sm text-slate-700">
+                  <span class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><i class="fa-solid fa-coins text-xs"></i></span>
+                  <span class="jp-text min-w-0 flex-1 leading-relaxed">節約額が数字で出るので、解約の判断がしやすい</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- 主な機能 -->
+    <section id="features" class="py-12 sm:py-20 bg-white overflow-x-hidden">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+          <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900">主な機能</h2>
+          <p class="jp-text jp-body-sm mt-3 sm:text-base text-slate-600">
+            <span class="sm:hidden">給与計算、シフト、節約診断、<span class="jp-inline">給料日カウントダウンまで対応</span></span>
+            <span class="hidden sm:inline">給与計算からシフト・節約診断、給料日カウントダウンまで</span>
+          </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 min-w-0">
+          <article class="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-brand-600 text-white flex items-center justify-center"><i class="fa-solid fa-wallet"></i></div>
+            <h3 class="mt-3 font-bold">給与計算</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">基本給・残業代・夜勤手当を自動計算</p>
+          </article>
+          <article class="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-orange-500 text-white flex items-center justify-center"><i class="fa-solid fa-credit-card"></i></div>
+            <h3 class="mt-3 font-bold">固定費管理</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">家賃・光熱費・サブスクをまとめて管理</p>
+          </article>
+          <article class="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-brand-500 text-white flex items-center justify-center"><i class="fa-solid fa-coins"></i></div>
+            <h3 class="mt-3 font-bold">実質残高表示</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">固定費を引いた「本当に使えるお金」</p>
+          </article>
+          <article class="rounded-2xl border border-violet-200 bg-violet-50/50 p-5 sm:p-6 ring-1 ring-violet-100 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-violet-600 text-white flex items-center justify-center"><i class="fa-solid fa-calendar-days"></i></div>
+            <h3 class="mt-3 font-bold text-violet-900">シフトカレンダー</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">日勤・夜勤・残業をアイコンで登録し手当と連動</p>
+          </article>
+          <article class="rounded-2xl border border-rose-200 bg-rose-50/50 p-5 sm:p-6 ring-1 ring-rose-100 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-rose-600 text-white flex items-center justify-center"><i class="fa-solid fa-piggy-bank"></i></div>
+            <h3 class="mt-3 font-bold text-rose-900">節約診断</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">サブスクの利用頻度チェックと年間節約額</p>
+          </article>
+          <article class="rounded-2xl border border-slate-100 bg-slate-50/50 p-5 sm:p-6 min-w-0">
+            <div class="h-11 w-11 rounded-xl bg-cyan-600 text-white flex items-center justify-center"><i class="fa-solid fa-hourglass-half"></i></div>
+            <h3 class="mt-3 font-bold">給料日カウントダウン</h3>
+            <p class="jp-text mt-1 text-sm text-slate-600">次の給料日まで自動カウント</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="py-12 sm:py-20 bg-slate-50">
+      <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 min-w-0">
+        <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+          <h2 class="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-900">プレミアムプラン</h2>
+          <p class="jp-text mt-3 text-sm sm:text-base text-slate-600">基本機能は無料でご利用いただけます。データ保存・収入予測などの高度な機能は有料プランで。</p>
+        </div>
+        <div class="flex flex-col md:grid md:grid-cols-2 gap-4 sm:gap-6 w-full max-w-4xl mx-auto min-w-0">
+          <article class="safe-card rounded-2xl bg-white border-2 border-slate-200 p-3.5 sm:p-8">
+            <h3 class="jp-text text-base sm:text-xl font-bold leading-snug">
+              <span class="md:hidden">スタンダード（¥300/月）</span>
+              <span class="hidden md:inline">スタンダード</span>
+            </h3>
+            <p class="hidden md:block mt-3 sm:mt-4 text-3xl sm:text-4xl font-extrabold">¥300<span class="text-base font-medium text-slate-500">/月</span></p>
+            <ul class="list-check mt-4 sm:mt-6 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-700">
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text">データ保存無制限</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text">複数勤務先対応</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text">月別履歴</span></li>
+            </ul>
+          </article>
+          <article class="safe-card rounded-2xl bg-white border-2 border-brand-500 p-3.5 sm:p-8 shadow-glow relative">
+            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand-600 px-3 sm:px-4 py-1 text-[10px] sm:text-xs font-bold text-white">おすすめ</span>
+            <h3 class="jp-text text-base sm:text-xl font-bold mt-2 leading-snug">
+              <span class="md:hidden">プレミアム（¥500/月）</span>
+              <span class="hidden md:inline">プレミアム</span>
+            </h3>
+            <p class="hidden md:block mt-3 sm:mt-4 text-3xl sm:text-4xl font-extrabold text-brand-700">¥500<span class="text-base font-medium text-slate-500">/月</span></p>
+            <ul class="list-check mt-4 sm:mt-6 space-y-2 sm:space-y-3 text-xs sm:text-sm text-slate-700">
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text">収入予測グラフ</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text">残業・夜勤推移</span></li>
+              <li class="flex gap-2"><i class="fa-solid fa-check text-brand-600 mt-1 shrink-0 text-[10px] sm:text-xs" aria-hidden="true"></i><span class="jp-text list-text"><span class="jp-inline">年間手取り予測</span></span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="waitlist" class="bg-gradient-to-br from-teal-600 to-teal-800 py-14 sm:py-20 text-center overflow-hidden px-4">
+      <h2 class="text-2xl sm:text-3xl font-bold text-white mb-3 sm:mb-4">先行リリース通知を受け取る</h2>
+      <p class="jp-text text-sm sm:text-base text-teal-100 mb-6 sm:mb-8 max-w-md mx-auto">公開時にいち早くお知らせします。登録は30秒で完了。</p>
+      <a href="https://docs.google.com/forms/d/e/1FAIpQLSe0JpXU6Bx4vM1PR9QvfaJl0e7D3w3qNkXBL3C6alTulZdRuA/viewform?usp=header" target="_blank" rel="noopener noreferrer"
+         class="inline-block bg-white text-teal-700 font-bold px-6 sm:px-10 py-3.5 sm:py-4 rounded-full text-base sm:text-lg hover:bg-teal-50 transition max-w-full">
+        無料で事前登録する →
+      </a>
+      <p class="jp-text text-teal-200 text-xs sm:text-sm mt-4">登録情報はリリース通知のみに使用します。</p>
+    </section>
+  </main>
+
+  <footer class="bg-slate-900 text-slate-400 py-10">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <span class="font-semibold text-white flex items-center gap-2">
+        <span class="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center text-sm"><i class="fa-solid fa-yen-sign"></i></span>
+        給料メーター
+      </span>
+      <p class="text-sm">&copy; 2026 給料メーター</p>
+    </div>
+  </footer>
+</body>
+</html>
